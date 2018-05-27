@@ -93,16 +93,16 @@ void controlEngine(int pressure) {
 String consolePressureOutput (int pressure) {
   String out;
   if (pressure < pressureSensorMinLevelTreshold) {
-    out = String("WARN: Low pressure sensor level. Bad music, i'll wait a bit!\n") + String("\t Engine state is - ") + String(engineState);
+    out = String("WARN: Low pressure sensor level. Bad music, i'll wait a bit!\n === Pressure level is - ") + String(pressure) + String(" === | === Engine state is - ") + String(engineState) + " ===";
   }
   else if ((pressure >= pressureSensorMinLevelTreshold) and (pressure < minPowerOnPressureValue)) {
-    out = String("INFO: Low pressure detected. It's current level = ") + String(pressure) + String(". Starting waterpump engine\n \t Engine state is - ") + String(engineState);
+    out = String("INFO: Low pressure detected. Waterpump engine started.\n === Pressure level is - ") + String(pressure) + String(" === | === Engine state is - ") + String(engineState) + " ===";
   }
   else if ((pressure >= minPowerOnPressureValue) and (engineState)) {
-    out = String("INFO: Engine is running and rising pressure. It's current level = ") + String(pressure) + String("\n \t Engine state is - ") + String(engineState);
+    out = String("INFO: Engine is running and rising pressure.\n === Pressure level is - ") + String(pressure) + String(" === | === Engine state is - ") + String(engineState) + " ===";
   }
   else if ((pressure >= minPowerOnPressureValue) and (!engineState)) {
-    out = String("INFO: Engine stopped with normal pressure. It's current level = ") + String(pressure) + String("\n \t Engine state is - ") + String(engineState);
+    out = String("INFO: Engine stopped with normal pressure.\n === Pressure level is - ") + String(pressure) + String(" === | === Engine state is - ") + String(engineState) + " ===";
   }
   return out;
 }

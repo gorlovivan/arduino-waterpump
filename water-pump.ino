@@ -1,7 +1,10 @@
 /*
   WaterPumpController
-
   Turns on and off a water pump by checking system's pressure level/
+  ver. 0.2rc1
+
+  Release notes:
+  * full code refactoring
 
   created 2018
   by VanZa <http://www.example.org>
@@ -18,13 +21,12 @@
   3.4 (320)
   3.8 (344)
   4.0 (360)
-  
+
 */
 
-// constants won't change. They're used here to set pin numbers:
+// CONSTANTS:
 const int inputPressureSensorPin = A0;     // the number of the pushbutton pin
-const int outputLedPin = 13;
-//const int outputPowerPin = 2;
+// const int outputLedPin = 13;
 const int pressureSensorMinLevelTreshold =  85; // Минимальный уровень сигнала с датчика давления, сигнализирующий о подключении
 const int probeCount =  10; // Количество замеров с датчика, для усреднения значения
 const int minPowerOnPressureValue = 160;
@@ -35,79 +37,81 @@ const int powerOffNoSensorDelay = 2000;
 
 
 
-// variables will change:
+// VARs:
 int sensorOutputLevel, clearLevel = 0;         // variable for getting current pressure level
 int i = 1;
 int sensorOutputLevelProbeSum;
 bool engineState = false;
+int currentPressure = 0;
 
 void setup() {
-  // initialize the pushbutton pin as an input:
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(2, OUTPUT); //outputPowerPin
-  //digitalWrite(2, HIGH); //outputPowerPin
   pinMode(inputPressureSensorPin, INPUT);
   Serial.begin(9600);
 }
 
-
-
-void loop() {
-  
-  Serial.print("\n");
-  sensorOutputLevelProbeSum = 0;
-  i = 0;
-  sensorOutputLevel = analogRead(inputPressureSensorPin);
-
-
-  if (sensorOutputLevel >= pressureSensorMinLevelTreshold) {
-
-    while (i < probeCount) {
-      sensorOutputLevel = analogRead(inputPressureSensorPin);
-      sensorOutputLevelProbeSum += sensorOutputLevel;
-      i += 1;
-    }
-
+void indicateLed(int pressure) {
+  if (pressure >= pressureSensorMinLevelTreshold) {
+    digitalWrite(LED_BUILTIN, LOW);
+  }
+  if (pressure < pressureSensorMinLevelTreshold) {
     digitalWrite(LED_BUILTIN, HIGH);
-    clearLevel = round(sensorOutputLevelProbeSum / (probeCount * 10)) * 10;
-    //Serial.print(" sensorOutputLevelProbeSum =");
-    //Serial.print(sensorOutputLevelProbeSum);
-    Serial.print(" \t sensor = ");
-    Serial.print(clearLevel);
-    //Serial.print("\t level = ");
-    //Serial.print(sensorOutputLevel);
+  }
+}
 
+int getCurrentPressure (int checks) {
+  int i;
+  int sval = 0;
+  for (i = 0; i < checks; i++) {
+    sval = sval + analogRead(inputPressureSensorPin);    // sensor on analog pin
+  }
+  sval = round(sval / (checks * 10)) * 10;    // average of checks count
+  return sval;
+}
 
-    if (clearLevel < minPowerOnPressureValue) {
+void controlEngine(int pressure) {
+  if (pressure >= pressureSensorMinLevelTreshold) {
+    if (pressure < minPowerOnPressureValue) {
       digitalWrite(2, HIGH);
       engineState = true;
-      Serial.print(" \tLow pressure detected. Engine state is - ");
-      Serial.print(engineState);
       delay(powerOnDelay);
-    } else {
-      if (clearLevel > maxPowerOffPressureValue) {
-        engineState = false;
-        Serial.print(" \tOverPressure detected. Engine state is - ");
-        Serial.print(engineState);
-        digitalWrite(2, LOW);
-        delay(powerOffDelay);
-
-      }
-      if ((clearLevel > minPowerOnPressureValue) and (clearLevel < maxPowerOffPressureValue)) {
-        Serial.print(" \tIt's good pressure! Waiting... Engine state is - ");
-        Serial.print(engineState);
-      }
+    }
+    if (pressure >= maxPowerOffPressureValue) {
+      digitalWrite(2, LOW);
+      engineState = false;
+      delay(powerOffDelay);
     }
   }
-
   else {
     digitalWrite(2, LOW);
-    digitalWrite(LED_BUILTIN, LOW);
-    Serial.print(" \t No music at all =(");
-    Serial.print("\t level = ");
-    Serial.print(sensorOutputLevel);
-    Serial.print(" \t ");
-    //Serial.print(outputPowerPin);
+    engineState = false;
     delay(powerOffNoSensorDelay);
   }
+}
+
+String consolePressureOutput (int pressure) {
+  String out;
+  if (pressure < pressureSensorMinLevelTreshold) {
+    out = String("WARN: Low pressure sensor level. Bad music, i'll wait a bit!\n") + String("\t Engine state is - ") + String(engineState);
+  }
+  else if ((pressure >= pressureSensorMinLevelTreshold) and (pressure < minPowerOnPressureValue)) {
+    out = String("INFO: Low pressure detected. It's current level = ") + String(pressure) + String(". Starting waterpump engine\n \t Engine state is - ") + String(engineState);
+  }
+  else if ((pressure >= minPowerOnPressureValue) and (engineState)) {
+    out = String("INFO: Engine is running and rising pressure. It's current level = ") + String(pressure) + String("\n \t Engine state is - ") + String(engineState);
+  }
+  else if ((pressure >= minPowerOnPressureValue) and (!engineState)) {
+    out = String("INFO: Engine stopped with normal pressure. It's current level = ") + String(pressure) + String("\n \t Engine state is - ") + String(engineState);
+  }
+  return out;
+}
+
+void loop() {
+
+  currentPressure = getCurrentPressure(probeCount);
+  indicateLed(currentPressure);
+  controlEngine(currentPressure);
+  Serial.println(consolePressureOutput(currentPressure));
+  
 }

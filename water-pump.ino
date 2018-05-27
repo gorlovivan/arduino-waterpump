@@ -1,10 +1,11 @@
 /*
   WaterPumpController
   Turns on and off a water pump by checking system's pressure level/
-  ver. 0.2rc1
+  
+  ver. 0.3rc1
 
   Release notes:
-  * full code refactoring
+  + Automatic calibration to determine maxPowerOffPressureValue
 
   created 2018
   by VanZa <http://www.example.org>
@@ -25,30 +26,38 @@
 */
 
 // CONSTANTS:
-const int inputPressureSensorPin = A0;     // the number of the pushbutton pin
-// const int outputLedPin = 13;
-const int pressureSensorMinLevelTreshold =  85; // Минимальный уровень сигнала с датчика давления, сигнализирующий о подключении
-const int probeCount =  10; // Количество замеров с датчика, для усреднения значения
-const int minPowerOnPressureValue = 160;
-const int maxPowerOffPressureValue = 220;
-const int powerOnDelay = 2000;
-const int powerOffDelay = 5000;
-const int powerOffNoSensorDelay = 2000;
+const int inputPressureSensorPin = A0;            // the number of the pressure sensor pin
+const int pressureSensorMinLevelTreshold =  85;   // Минимальный уровень сигнала с датчика давления, сигнализирующий о подключении
+const int probeCount =  10;                       // Количество замеров с датчика, для усреднения значения
+const int minPowerOnPressureValue = 160;          // Минимальный нормальный уровень давления
+const int maxPressureValueChecksDelay = 5000;     // Интервал замеров давления для определения скорости наращивания давления
+const int minPressureIncSpdFct = 20;              // Минимальная скорость наращивания давления
+const int powerOnDelay = 2000;                    // Задержка "петли" при включенном двигателе насоса
+const int powerOffDelay = 5000;                   // Задержка "петли" при выключенном двигателе насоса
+const int powerOffNoSensorDelay = 2000;           // Задержка "петли" при отсутстии подключенного сенсора давления
+
 
 
 
 // VARs:
-int sensorOutputLevel, clearLevel = 0;         // variable for getting current pressure level
-int i = 1;
-int sensorOutputLevelProbeSum;
-bool engineState = false;
-int currentPressure = 0;
+// int sensorOutputLevel, clearLevel = 0;         // variable for getting current pressure level
+bool engineState = false;                         // Состояние двигателя (включен/выключен)
+int maxPowerOffPressureValue = 210;               // Максимальный нормальный уровень давления
+int currentPressure = 0;                          // Переменная для текущего уровня давления
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(2, OUTPUT); //outputPowerPin
   pinMode(inputPressureSensorPin, INPUT);
   Serial.begin(9600);
+  if (maxPowerOffPressureValue < getMaxPressure(maxPressureValueChecksDelay)) {
+    maxPowerOffPressureValue = getMaxPressure(maxPressureValueChecksDelay);
+    Serial.println("Max pressure value updated. Now it's equal to " + String(maxPowerOffPressureValue));
+  }
+  else {
+    Serial.println("Max pressure value is not updated. Now it's equal to default " + String(maxPowerOffPressureValue) + "\n");
+  };
+
 }
 
 void indicateLed(int pressure) {
@@ -64,10 +73,33 @@ int getCurrentPressure (int checks) {
   int i;
   int sval = 0;
   for (i = 0; i < checks; i++) {
-    sval = sval + analogRead(inputPressureSensorPin);    // sensor on analog pin
+    sval = sval + analogRead(inputPressureSensorPin);
   }
-  sval = round(sval / (checks * 10)) * 10;    // average of checks count
+  sval = round(sval / (checks * 10)) * 10;
   return sval;
+}
+
+int getMaxPressure (int delayValue) {
+  int diff = minPressureIncSpdFct;
+  int preValue, value = 0;
+  String printout;
+
+  Serial.println("Calibration started... Kicking engine on. \n");
+  digitalWrite(2, HIGH);
+  engineState = true;
+  delay(5000);
+
+  while (diff >= minPressureIncSpdFct) {
+    preValue = getCurrentPressure(probeCount);
+    delay(delayValue);
+    value = getCurrentPressure(probeCount);
+    diff = value - preValue;
+
+    printout = String("Getting MaxPressure. === Value = ") + String(value) + String(" === | === preValue = ") + String(preValue) + " ===\n";
+    Serial.println(printout);
+  }
+
+  return value;
 }
 
 void controlEngine(int pressure) {
@@ -113,5 +145,5 @@ void loop() {
   indicateLed(currentPressure);
   controlEngine(currentPressure);
   Serial.println(consolePressureOutput(currentPressure));
-  
+
 }

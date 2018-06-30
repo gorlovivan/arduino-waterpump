@@ -2,7 +2,7 @@
   WaterPumpController
   Turns on and off a water pump by checking system's pressure level/
   
-  ver. 0.3rc1
+  ver. 0.3rc2
 
   Release notes:
   + Automatic calibration to determine maxPowerOffPressureValue
@@ -31,7 +31,7 @@ const int pressureSensorMinLevelTreshold =  85;   // Минимальный ур
 const int probeCount =  10;                       // Количество замеров с датчика, для усреднения значения
 const int minPowerOnPressureValue = 160;          // Минимальный нормальный уровень давления
 const int maxPressureValueChecksDelay = 5000;     // Интервал замеров давления для определения скорости наращивания давления
-const int minPressureIncSpdFct = 20;              // Минимальная скорость наращивания давления
+const int minPressureIncSpdFct = 2;               // Минимальная скорость наращивания давления
 const int powerOnDelay = 2000;                    // Задержка "петли" при включенном двигателе насоса
 const int powerOffDelay = 5000;                   // Задержка "петли" при выключенном двигателе насоса
 const int powerOffNoSensorDelay = 2000;           // Задержка "петли" при отсутстии подключенного сенсора давления
@@ -46,18 +46,20 @@ int maxPowerOffPressureValue = 210;               // Максимальный н
 int currentPressure = 0;                          // Переменная для текущего уровня давления
 
 void setup() {
+  int mpopv = 0;
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(2, OUTPUT); //outputPowerPin
   pinMode(inputPressureSensorPin, INPUT);
   Serial.begin(9600);
-  if (maxPowerOffPressureValue < getMaxPressure(maxPressureValueChecksDelay)) {
-    maxPowerOffPressureValue = getMaxPressure(maxPressureValueChecksDelay);
+  Serial.println("INITIALIZATION STARTED.\nmaxPowerOffPressureValue = " + String(maxPowerOffPressureValue) + "\n");
+  mpopv = getMaxPressure(maxPressureValueChecksDelay);
+  if (maxPowerOffPressureValue < mpopv) {
+    maxPowerOffPressureValue = mpopv;
     Serial.println("Max pressure value updated. Now it's equal to " + String(maxPowerOffPressureValue));
   }
   else {
     Serial.println("Max pressure value is not updated. Now it's equal to default " + String(maxPowerOffPressureValue) + "\n");
   };
-
 }
 
 void indicateLed(int pressure) {
@@ -75,7 +77,7 @@ int getCurrentPressure (int checks) {
   for (i = 0; i < checks; i++) {
     sval = sval + analogRead(inputPressureSensorPin);
   }
-  sval = round(sval / (checks * 10)) * 10;
+  sval = round(sval / (checks * 2)) * 2;
   return sval;
 }
 
@@ -84,19 +86,18 @@ int getMaxPressure (int delayValue) {
   int preValue, value = 0;
   String printout;
 
-  Serial.println("Calibration started... Kicking engine on. \n");
+  Serial.println("Calibration started... Kicking engine on and waiting for 5sec. \n");
   digitalWrite(2, HIGH);
   engineState = true;
   delay(5000);
 
   while (diff >= minPressureIncSpdFct) {
     preValue = getCurrentPressure(probeCount);
+    Serial.print("Getting MaxPressure. === preValue = " + String(preValue) + " === | ===");
     delay(delayValue);
     value = getCurrentPressure(probeCount);
     diff = value - preValue;
-
-    printout = String("Getting MaxPressure. === Value = ") + String(value) + String(" === | === preValue = ") + String(preValue) + " ===\n";
-    Serial.println(printout);
+    Serial.println(" Value = " + String(value) + "\n");
   }
 
   return value;

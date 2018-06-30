@@ -28,7 +28,8 @@
 // CONSTANTS:
 const int inputPressureSensorPin = A0;            // the number of the pressure sensor pin
 const int pressureSensorMinLevelTreshold =  85;   // Минимальный уровень сигнала с датчика давления, сигнализирующий о подключении
-const int probeCount =  10;                       // Количество замеров с датчика, для усреднения значения
+const int probeCount =  5;                        // Количество замеров с датчика, для усреднения значения
+const int probePrecisionFct =  2;                 // Количество замеров с датчика, для усреднения значения
 const int minPowerOnPressureValue = 160;          // Минимальный нормальный уровень давления
 const int maxPressureValueChecksDelay = 5000;     // Интервал замеров давления для определения скорости наращивания давления
 const int minPressureIncSpdFct = 2;               // Минимальная скорость наращивания давления
@@ -71,13 +72,13 @@ void indicateLed(int pressure) {
   }
 }
 
-int getCurrentPressure (int checks) {
+int getCurrentPressure (int checks, int precision) {
   int i;
   int sval = 0;
   for (i = 0; i < checks; i++) {
     sval = sval + analogRead(inputPressureSensorPin);
   }
-  sval = round(sval / (checks * 2)) * 2;
+  sval = round(sval / (checks * precision)) * precision;
   return sval;
 }
 
@@ -92,10 +93,10 @@ int getMaxPressure (int delayValue) {
   delay(5000);
 
   while (diff >= minPressureIncSpdFct) {
-    preValue = getCurrentPressure(probeCount);
+    preValue = getCurrentPressure(probeCount, probePrecisionFct);
     Serial.print("Getting MaxPressure. === preValue = " + String(preValue) + " === | ===");
     delay(delayValue);
-    value = getCurrentPressure(probeCount);
+    value = getCurrentPressure(probeCount, probePrecisionFct);
     diff = value - preValue;
     Serial.println(" Value = " + String(value) + "\n");
   }
@@ -142,7 +143,7 @@ String consolePressureOutput (int pressure) {
 
 void loop() {
 
-  currentPressure = getCurrentPressure(probeCount);
+  currentPressure = getCurrentPressure(probeCount, probePrecisionFct);
   indicateLed(currentPressure);
   controlEngine(currentPressure);
   Serial.println(consolePressureOutput(currentPressure));

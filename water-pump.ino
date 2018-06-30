@@ -29,7 +29,7 @@
 const int inputPressureSensorPin = A0;            // the number of the pressure sensor pin
 const int pressureSensorMinLevelTreshold =  85;   // Минимальный уровень сигнала с датчика давления, сигнализирующий о подключении
 const int probeCount =  5;                        // Количество замеров с датчика, для усреднения значения
-const int probePrecisionFct =  2;                 // Количество замеров с датчика, для усреднения значения
+const int probePrecisionFct =  2;                 // Значение шага замера давления
 const int minPowerOnPressureValue = 160;          // Минимальный нормальный уровень давления
 const int maxPressureValueChecksDelay = 5000;     // Интервал замеров давления для определения скорости наращивания давления
 const int minPressureIncSpdFct = 2;               // Минимальная скорость наращивания давления
